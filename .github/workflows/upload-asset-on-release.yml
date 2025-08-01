@@ -1,0 +1,40 @@
+name: Upload Release Asset
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  upload-zip:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare ZIP structure
+        run: |
+          REPO_NAME="${{ github.event.repository.name }}"
+          ZIP_NAME="${REPO_NAME}-${{ github.ref_name }}"
+
+          mkdir "$REPO_NAME"
+          rsync -a ./ "$REPO_NAME"/ \
+            --exclude=".git*" \
+            --exclude=".github" \
+            --exclude=".pre-commit-config.yaml" \
+            --exclude="setup.bat" \
+            --exclude="setup.sh" \
+            --exclude="$REPO_NAME" \
+
+          zip -r "$ZIP_NAME.zip" "$REPO_NAME"
+          rm -rf "$REPO_NAME"
+
+      - name: Upload ZIP to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ github.event.repository.name }}-${{ github.ref_name }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
